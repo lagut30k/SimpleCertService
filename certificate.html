@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<title>Very simple certificates frontend</title>
+<style>
+body {
+  font-family: Consolas,Menlo,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New,monospace,sans-serif;
+  font-size: 13px;
+  line-height: 1.3em;
+  color: #242729;
+  background: #FFF;
+  min-width: 1075px;
+}
+.div-table{
+  display:table;
+  width:auto;
+  background-color:#eee;
+  border:1px solid  #666666;
+  border-spacing:5px;/*cellspacing:poor IE support for  this*/
+}
+.div-table-row{
+  display:table-row;
+  width:auto;
+  clear:both;
+}
+.div-table-col{
+  float:left;
+  display:table-column;
+  width:500px;
+  background-color:#ccc;
+}
+.div-table-col-header{
+  float:left;
+  display:table-column;
+  width:500px;
+}
+.div-table-col-low-width{
+  float:left;
+  display:table-column;
+  width:160px;
+}
+.div-table-col-high-width{
+  float:left;
+  display:table-column;
+  width:850px;
+}
+
+
+div {
+  word-wrap: break-word;
+}
+</style>
+</head>
+<body onload="onLoad()">
+<script>
+const domain = 'http://localhost:8000';
+const certificatesHandler = 'certificates';
+const providersHandler = 'systemcryptoproviders';
+const certificateDetailsHandler = 'certificatedetails';
+
+function onLoad(){
+  fetchProviders();
+  fetchCertificates();
+}
+
+function fetchProviders() {
+  httpGet(`${domain}/${providersHandler}`)
+    .then(JSON.parse)
+    .then((providers) => {
+  		document.getElementById('providersHolder').innerHTML = providers
+        .map((provider) =>
+        `<div class="div-table-row">
+           <div class="div-table-col">${provider.name}</div>
+           <div class="div-table-col">${provider.type}</div>
+        </div>`)
+        // `<div>Provider Name: ${provider.name}</div><div>Provider Type: ${provider.type}</div>`)
+        .join('');})
+    .catch(showError);
+}
+
+function fetchCertificates() {
+	httpGet(`${domain}/${certificatesHandler}`)
+    .then(JSON.parse)
+    .then((certificates) => {
+      if (certificates && certificates[0]){
+        fetchDetails(certificates[0].thumbprint);
+      }
+      else {
+        throw new Error("No certificates found");
+      }
+      document.getElementById('certificatesHolder').innerHTML = certificates
+        .map((certificate) => `<option value=${certificate.thumbprint}>${certificate.name}</option>`)
+        .join('');
+    })
+    .catch(showError);
+}
+
+function fetchDetails(thumbprint) {
+  httpGet(`${domain}/${certificateDetailsHandler}/${thumbprint}`)
+    .then(JSON.parse)
+    .then((certificate) => {
+      document.getElementById('certificateDetailsHolder').innerHTML =
+      '<div class="div-table">'
+      + createHtmlRow('Simple Name:', certificate.simpleName)
+      + createHtmlRow('Content Type:', certificate.contentType)
+      + createHtmlRow('Signature Algorithm:', certificate.signatureAlgorithm)
+      + createHtmlRow('Verified:', certificate.isVerified)
+      + createHtmlRow('Archived:', certificate.isArchived)
+      + createHtmlRow('Public Key:', certificate.publicKey)
+      + createHtmlRow('Thumbprint:', certificate.thumbprint)
+      + createHtmlRow('Raw Data:', certificate.rawData)
+      + '</div>';})
+    .catch(showError);
+}
+
+function createHtmlRow(label, value){
+  return `<div class="div-table-row">
+    <div class="div-table-col-low-width">${label}</div>
+    <div class="div-table-col-high-width">${value}</div>
+  </div>`;
+}
+
+function showError(error) {
+  alert(error.message || error.stack);
+}
+
+function httpGet(url) {
+	return new Promise(
+		function (resolve, reject) {
+			var request = new XMLHttpRequest();
+			request.onreadystatechange = function () {
+				console.log(this);
+				if (this.readyState !== 4) {
+					return;
+				}
+				if (this.status === 200) {
+					resolve(this.response);
+				} else {
+					reject(new Error(this.statusText));
+				}
+			}
+			request.onerror = function () {
+				reject(new Error(
+					'XMLHttpRequest Error: '+this.statusText));
+			};
+			request.open('GET', url);
+			request.send();
+		});
+}
+</script>
+<div class="div-table">
+   <div class="div-table-row">
+      <div class="div-table-col-header" align="center">Provider</div>
+      <div class="div-table-col-header" align="center">Provider Type</div>
+   </div>
+   <div id='providersHolder'></div>
+</div>
+<select id='certificatesHolder' onchange='fetchDetails(this.value)'></select>
+<div id='certificateDetailsHolder'></div>
+</body>
+</html>
