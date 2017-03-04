@@ -9,6 +9,7 @@ namespace SimpleCertService.Service
     public interface ICertificateService
     {
         [OperationContract]
+        [FaultContract(typeof(ServiceFaultDto))]
         [WebGet(ResponseFormat = WebMessageFormat.Json)]
         IEnumerable<SimpleX509Dto> Certificates();
 
@@ -18,6 +19,7 @@ namespace SimpleCertService.Service
         X509Dto CertificateDetails(string s);
 
         [OperationContract]
+        [FaultContract(typeof(ServiceFaultDto))]
         [WebGet(ResponseFormat = WebMessageFormat.Json)]
         IEnumerable<CSPDto> SystemCryptoProviders();
     }
